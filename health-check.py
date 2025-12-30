@@ -6,25 +6,56 @@
 
 import requests
 import time
-import winsound  # Windows 전용 소리 모듈
+import platform
+import os
 from datetime import datetime
 import sys
+import argparse
 
-# 설정
-API_URL = "http://localhost:3000/api/health"  # 헬스체크 API URL 변경 필요
-CHECK_INTERVAL = 10  # 10초
-TIMEOUT = 5  # 타임아웃 5초
+# 기본 설정
+DEFAULT_API_URL = "http://localhost:3000/api/health"
+DEFAULT_CHECK_INTERVAL = 10  # 10초
+DEFAULT_TIMEOUT = 5  # 타임아웃 5초
 BEEP_FREQUENCY = 1000  # 비프음 주파수 (Hz)
 BEEP_DURATION = 500  # 비프음 지속 시간 (ms)
 
 def beep_alert():
-    """소리 알림"""
+    """소리 알림 - 크로스 플랫폼 지원"""
     try:
-        # Windows 비프음 (주파수, 지속시간)
-        winsound.Beep(BEEP_FREQUENCY, BEEP_DURATION)
-        print("🔔 알림 소리 재생")
+        system = platform.system()
+        
+        if system == "Windows":
+            # Windows: winsound 사용
+            import winsound
+            winsound.Beep(BEEP_FREQUENCY, BEEP_DURATION)
+            print("🔔 알림 소리 재생 (Windows)")
+            
+        elif system == "Darwin":  # macOS
+            # macOS: 시스템 사운드 재생
+            os.system('afplay /System/Library/Sounds/Glass.aiff &')
+            print("🔔 알림 소리 재생 (macOS)")
+            
+        elif system == "Linux":
+            # Linux: 시스템 벨 사용
+            # beep 명령어가 있으면 사용, 없으면 시스템 벨
+            result = os.system('beep -f {} -l {} 2>/dev/null'.format(BEEP_FREQUENCY, BEEP_DURATION))
+            if result != 0:
+                # beep 명령어가 없으면 시스템 벨
+                print('\a')
+            print("🔔 알림 소리 재생 (Linux)")
+            
+        else:
+            # 기타 운영체제: 시스템 벨
+            print('\a')
+            print("🔔 알림 소리 재생 (System Bell)")
+            
     except Exception as e:
-        print(f"⚠️ 소리 재생 실패: {e}")
+        # 실패 시 시스템 벨로 폴백
+        try:
+            print('\a')
+            print(f"🔔 알림 소리 재생 (Fallback) - {e}")
+        except:
+            print(f"⚠️ 소리 재생 실패: {e}")
 
 def check_health():
     """헬스체크 실행"""
