@@ -57,10 +57,10 @@ def beep_alert():
         except:
             print(f"⚠️ 소리 재생 실패: {e}")
 
-def check_health():
+def check_health(api_url, timeout):
     """헬스체크 실행"""
     try:
-        response = requests.get(API_URL, timeout=TIMEOUT)
+        response = requests.get(api_url, timeout=timeout)
         if response.status_code == 200:
             return True, response.status_code
         else:
@@ -74,10 +74,47 @@ def check_health():
 
 def main():
     """메인 함수"""
+    # 명령줄 인자 파싱
+    parser = argparse.ArgumentParser(
+        description='서버 헬스체크 프로그램 - API에 주기적으로 헬스체크 요청을 보내고 응답이 없으면 알림',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+사용 예시:
+  python health-check.py --url http://localhost:3000/api/health
+  python health-check.py --url https://api.example.com/health --interval 5 --timeout 3
+  python health-check.py -u http://localhost:8080/health -i 15
+        """
+    )
+    
+    parser.add_argument(
+        '--url', '-u',
+        type=str,
+        default=DEFAULT_API_URL,
+        help=f'헬스체크 API URL (기본값: {DEFAULT_API_URL})'
+    )
+    
+    parser.add_argument(
+        '--interval', '-i',
+        type=int,
+        default=DEFAULT_CHECK_INTERVAL,
+        help=f'체크 간격(초) (기본값: {DEFAULT_CHECK_INTERVAL})'
+    )
+    
+    parser.add_argument(
+        '--timeout', '-t',
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help=f'요청 타임아웃(초) (기본값: {DEFAULT_TIMEOUT})'
+    )
+    
+    args = parser.parse_args()
+    
+    # 설정 출력
     print("=" * 50)
     print("서버 헬스체크 프로그램 시작")
-    print(f"API URL: {API_URL}")
-    print(f"체크 간격: {CHECK_INTERVAL}초")
+    print(f"API URL: {args.url}")
+    print(f"체크 간격: {args.interval}초")
+    print(f"타임아웃: {args.timeout}초")
     print("=" * 50)
     print()
 
@@ -86,7 +123,7 @@ def main():
     try:
         while True:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            is_healthy, status = check_health()
+            is_healthy, status = check_health(args.url, args.timeout)
 
             if is_healthy:
                 consecutive_failures = 0
@@ -99,7 +136,7 @@ def main():
                 beep_alert()
                 print(f"⚠️ 서버 응답 없음! 연속 {consecutive_failures}회 실패")
 
-            time.sleep(CHECK_INTERVAL)
+            time.sleep(args.interval)
 
     except KeyboardInterrupt:
         print("\n\n프로그램 종료")

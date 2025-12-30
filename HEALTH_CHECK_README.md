@@ -11,6 +11,7 @@
 ## 설치 방법
 
 1. Python 설치 확인
+
 ```bash
 python --version
 # 또는
@@ -18,29 +19,55 @@ python3 --version
 ```
 
 2. 필요한 패키지 설치
+
 ```bash
 pip install -r requirements-health-check.txt
 ```
 
 ## 사용 방법
 
-1. `health-check.py` 파일을 열어서 API URL을 수정하세요
-```python
-API_URL = "http://localhost:3000/api/health"  # 여기를 실제 API URL로 변경
-```
+### 기본 실행 (기본 URL 사용)
 
-2. 프로그램 실행
 ```bash
 python health-check.py
 ```
 
-## 설정 변경
+### API URL 지정하여 실행
+
+```bash
+python health-check.py --url http://your-api.com/health
+```
+
+### 옵션 전체 사용
+
+```bash
+python health-check.py --url http://your-api.com/health --interval 5 --timeout 3
+```
+
+### 짧은 옵션 사용
+
+```bash
+python health-check.py -u http://your-api.com/health -i 15 -t 10
+```
+
+### 도움말 보기
+
+```bash
+python health-check.py --help
+```
+
+## 명령줄 옵션
+
+| 옵션         | 짧은 옵션 | 설명               | 기본값                             |
+| ------------ | --------- | ------------------ | ---------------------------------- |
+| `--url`      | `-u`      | 헬스체크할 API URL | `http://localhost:3000/api/health` |
+| `--interval` | `-i`      | 체크 간격(초)      | 10                                 |
+| `--timeout`  | `-t`      | 요청 타임아웃(초)  | 5                                  |
+
+### 고급 설정 (코드 수정 필요)
 
 `health-check.py` 파일에서 다음 설정을 변경할 수 있습니다:
 
-- `API_URL`: 헬스체크할 API 주소
-- `CHECK_INTERVAL`: 체크 간격 (초 단위, 기본값: 10초)
-- `TIMEOUT`: 요청 타임아웃 (초 단위, 기본값: 5초)
 - `BEEP_FREQUENCY`: 비프음 주파수 (Hz, 기본값: 1000)
 - `BEEP_DURATION`: 비프음 지속 시간 (ms, 기본값: 500)
 
@@ -59,16 +86,18 @@ python health-check.py
 ## 예시 출력
 
 ```
+$ python health-check.py --url http://localhost:3000/api/health --interval 10
+
 ==================================================
 서버 헬스체크 프로그램 시작
 API URL: http://localhost:3000/api/health
 체크 간격: 10초
+타임아웃: 5초
 ==================================================
 
 [2024-01-15 14:30:00] ✅ 정상 - Status: 200
 [2024-01-15 14:30:10] ✅ 정상 - Status: 200
 [2024-01-15 14:30:20] ❌ 실패 - Status: TIMEOUT (연속 실패: 1회)
-🔔 알림 소리 재생
+🔔 알림 소리 재생 (macOS)
 ⚠️ 서버 응답 없음! 연속 1회 실패
 ```
-
