@@ -19,6 +19,40 @@ DEFAULT_TIMEOUT = 5  # 타임아웃 5초
 BEEP_FREQUENCY = 1000  # 비프음 주파수 (Hz)
 BEEP_DURATION = 500  # 비프음 지속 시간 (ms)
 
+def speak_text(text):
+    """TTS로 텍스트 읽기 - 크로스 플랫폼 지원"""
+    try:
+        system = platform.system()
+        
+        if system == "Windows":
+            # Windows: PowerShell의 SAPI 사용
+            escaped_text = text.replace("'", "''")  # PowerShell 문자열 이스케이프
+            cmd = f'powershell -Command "Add-Type -AssemblyName System.Speech; $speak = New-Object System.Speech.Synthesis.SpeechSynthesizer; $speak.Speak(\'{escaped_text}\')"'
+            os.system(cmd)
+            print(f"🔊 TTS 재생 (Windows): {text}")
+            
+        elif system == "Darwin":  # macOS
+            # macOS: say 명령어 사용
+            escaped_text = text.replace('"', '\\"')
+            os.system(f'say "{escaped_text}" &')
+            print(f"🔊 TTS 재생 (macOS): {text}")
+            
+        elif system == "Linux":
+            # Linux: espeak 또는 spd-say 사용
+            escaped_text = text.replace('"', '\\"')
+            result = os.system(f'espeak "{escaped_text}" 2>/dev/null')
+            if result != 0:
+                result = os.system(f'spd-say "{escaped_text}" 2>/dev/null')
+            print(f"🔊 TTS 재생 (Linux): {text}")
+            
+        else:
+            print(f"🔊 TTS 미지원 OS - 메시지: {text}")
+            print('\a')
+            
+    except Exception as e:
+        print(f"⚠️ TTS 재생 실패: {e}")
+        print('\a')
+
 def beep_alert():
     """소리 알림 - 크로스 플랫폼 지원"""
     try:
@@ -83,6 +117,8 @@ def main():
   python health-check.py --url http://localhost:3000/api/health
   python health-check.py --url https://api.example.com/health --interval 5 --timeout 3
   python health-check.py -u http://localhost:8080/health -i 15
+  python health-check.py --url http://api.example.com/health --alert "A서버가 다운되었습니다"
+  python health-check.py -u http://localhost:3000/health -a "주의! 서버 응답 없음"
         """
     )
     
@@ -107,6 +143,13 @@ def main():
         help=f'요청 타임아웃(초) (기본값: {DEFAULT_TIMEOUT})'
     )
     
+    parser.add_argument(
+        '--alert', '-a',
+        type=str,
+        default=None,
+        help='실패 시 TTS로 읽을 알림 메시지 (예: "A서버가 다운되었습니다")'
+    )
+    
     args = parser.parse_args()
     
     # 설정 출력
@@ -115,6 +158,8 @@ def main():
     print(f"API URL: {args.url}")
     print(f"체크 간격: {args.interval}초")
     print(f"타임아웃: {args.timeout}초")
+    if args.alert:
+        print(f"알림 메시지: {args.alert}")
     print("=" * 50)
     print()
 
@@ -132,8 +177,14 @@ def main():
                 consecutive_failures += 1
                 print(f"[{timestamp}] ❌ 실패 - Status: {status} (연속 실패: {consecutive_failures}회)")
                 
-                # 응답이 없으면 소리 알림
-                beep_alert()
+                # 응답이 없으면 알림
+                if args.alert:
+                    # TTS 메시지가 지정된 경우
+                    speak_text(args.alert)
+                else:
+                    # 기본 비프음
+                    beep_alert()
+                
                 print(f"⚠️ 서버 응답 없음! 연속 {consecutive_failures}회 실패")
 
             time.sleep(args.interval)
