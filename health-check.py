@@ -95,16 +95,24 @@ def check_health(api_url, timeout):
     """헬스체크 실행"""
     try:
         response = requests.get(api_url, timeout=timeout)
+        
+        # 응답 본문 가져오기 (최대 500자)
+        try:
+            response_body = response.text[:500] if response.text else "(응답 본문 없음)"
+        except:
+            response_body = "(응답 본문 읽기 실패)"
+        
         if response.status_code == 200:
-            return True, response.status_code
+            return True, response.status_code, response_body
         else:
-            return False, response.status_code
+            return False, response.status_code, response_body
+            
     except requests.exceptions.Timeout:
-        return False, "TIMEOUT"
+        return False, "TIMEOUT", "요청 시간 초과"
     except requests.exceptions.ConnectionError:
-        return False, "CONNECTION_ERROR"
+        return False, "CONNECTION_ERROR", "서버 연결 실패"
     except Exception as e:
-        return False, str(e)
+        return False, "ERROR", str(e)
 
 def main():
     """메인 함수"""
@@ -119,6 +127,8 @@ def main():
   python health-check.py -u http://localhost:8080/health -i 15
   python health-check.py --url http://api.example.com/health --alert "A서버가 다운되었습니다"
   python health-check.py -u http://localhost:3000/health -a "주의! 서버 응답 없음"
+  python health-check.py --url http://api.example.com/health --verbose
+  python health-check.py -u http://localhost:3000/health -v -a "서버 다운"
         """
     )
     
@@ -150,6 +160,12 @@ def main():
         help='실패 시 TTS로 읽을 알림 메시지 (예: "A서버가 다운되었습니다")'
     )
     
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        help='상세 로그 모드 (성공 시에도 응답 내용 표시)'
+    )
+    
     args = parser.parse_args()
     
     # 설정 출력
@@ -160,6 +176,8 @@ def main():
     print(f"타임아웃: {args.timeout}초")
     if args.alert:
         print(f"알림 메시지: {args.alert}")
+    if args.verbose:
+        print(f"상세 로그 모드: 활성화")
     print("=" * 50)
     print()
 
@@ -168,14 +186,18 @@ def main():
     try:
         while True:
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            is_healthy, status = check_health(args.url, args.timeout)
+            is_healthy, status, response_body = check_health(args.url, args.timeout)
 
             if is_healthy:
                 consecutive_failures = 0
                 print(f"[{timestamp}] ✅ 정상 - Status: {status}")
+                # 상세 로그 모드: 성공 시에도 응답 내용 표시
+                if args.verbose:
+                    print(f"   📄 응답: {response_body}")
             else:
                 consecutive_failures += 1
                 print(f"[{timestamp}] ❌ 실패 - Status: {status} (연속 실패: {consecutive_failures}회)")
+                print(f"   📄 응답 내용: {response_body}")
                 
                 # 응답이 없으면 알림
                 if args.alert:
